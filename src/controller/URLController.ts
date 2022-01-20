@@ -1,22 +1,29 @@
 import config from "../config/Constants";
-import { Request, response, Response } from "express";
+import { Request, Response } from "express";
 import shortId from 'shortid';
+import { URLModel } from "../database/model/URL";
 
 export class URLController {
     public async shorten(req: Request, res: Response): Promise<void> {
-       const { originURL }  = req.body;
-       const hash = shortId.generate();
-       const shortURL = `${config.API_URL}/${hash}}`;
-       res.json({ originURL, hash, shortURL });
+        const { originURL } = req.body;
+        const url = await URLModel.findOne({ originURL });
+        if (url) {
+            res.json(url);
+            return
+        }
+        const hash = shortId.generate();
+        const shortURL = `${config.API_URL}/${hash}}`;
+        const newURL = await URLModel.create({ originURL, hash, shortURL });
+        res.json(newURL);
     }
 
-    public async redirect (req: Request, res: Response): Promise<void> {
+    public async redirect(req: Request, res: Response): Promise<void> {
         const { hash } = req.params;
-        const url = {
-            originURL: "https://www.linkedin.com/in/danilo-sousa-a561a43a/",
-            hash: "vWhZ_s0X2",
-            shortURL: "http://localhost:5000/vWhZ_s0X2}"
+        const url = await URLModel.findOne({ hash });
+        if (url) {
+            res.redirect(url.originURL);
+            return
         }
-        res.redirect(url.originURL);
-     }
+        res.status(400).json({ error: 'URL not found' });
+    }
 }
